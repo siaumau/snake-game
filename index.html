@@ -1,0 +1,360 @@
+<title>草叢蛇行</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* Layout: a field-notebook specimen card — board left, field log right; stacks on phones */
+:root {
+  --paper: #eef0e6;      /* lab notebook page, faint green bias */
+  --ink: #1f2a1c;        /* deep moss ink */
+  --muted: #66705f;
+  --board: #d9dfcb;      /* terrarium floor */
+  --grid: #c3cbb0;
+  --snake: #2f7d46;      /* green tree python */
+  --snake-tail: #a8c44a;
+  --beetle: #c2571d;     /* amber beetle */
+  --line: #c9cfba;
+  --font-display: "Bricolage Grotesque", "Noto Sans TC", system-ui, sans-serif;
+  --font-body: "Noto Sans TC", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #141a13; --ink: #e3ead9; --muted: #8e9a86;
+    --board: #1c241a; --grid: #2a3527; --snake: #5fbf6e; --snake-tail: #c9e05a;
+    --beetle: #f08a3c; --line: #2c3729;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #141a13; --ink: #e3ead9; --muted: #8e9a86;
+  --board: #1c241a; --grid: #2a3527; --snake: #5fbf6e; --snake-tail: #c9e05a;
+  --beetle: #f08a3c; --line: #2c3729;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+.wrap {
+  max-width: 920px; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 28px; align-items: start;
+}
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(30px, 6vw, 46px); line-height: 1; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+.latin { font-family: var(--font-data); font-size: 13px; color: var(--muted); font-style: italic; }
+
+.stage { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 6px; overflow: hidden; background: var(--board); outline: 1px solid var(--line); }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.overlay {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px;
+  background: color-mix(in srgb, var(--board) 78%, transparent); backdrop-filter: blur(2px);
+}
+.overlay h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(26px, 5vw, 38px); margin: 0; }
+.overlay p { margin: 0; color: var(--muted); font-size: 15px; }
+button.go {
+  justify-self: center; margin-top: 6px; font: 700 15px var(--font-body); color: var(--paper); background: var(--snake);
+  border: 0; border-radius: 999px; padding: 10px 22px; cursor: pointer;
+}
+button.go:hover { filter: brightness(1.08); }
+button:focus-visible { outline: 3px solid var(--beetle); outline-offset: 2px; }
+
+aside { display: grid; gap: 20px; }
+.log { display: grid; gap: 0; border-top: 2px solid var(--ink); }
+.row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.row span:first-child { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+.row b { font-family: var(--font-data); font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
+.row b small { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+.keys { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 0; }
+kbd { font-family: var(--font-data); font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--ink); background: var(--board); }
+
+button.mute {
+  justify-self: start; font: 600 13px var(--font-body); color: var(--ink); background: var(--board);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+button.mute[aria-pressed="true"] { color: var(--muted); }
+.pad { display: none; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 56px); gap: 8px; justify-content: center; }
+.pad button { font-size: 22px; border: 1px solid var(--line); background: var(--board); color: var(--ink); border-radius: 10px; cursor: pointer; touch-action: manipulation; }
+.pad [data-d="up"] { grid-column: 2; }
+.pad [data-d="left"] { grid-column: 1; grid-row: 2; }
+.pad [data-d="down"] { grid-column: 2; grid-row: 2; }
+.pad [data-d="right"] { grid-column: 3; grid-row: 2; }
+
+@media (max-width: 720px) {
+  .wrap { grid-template-columns: 1fr; gap: 18px; }
+  aside { grid-template-columns: 1fr; }
+  .log { grid-template-columns: repeat(3, 1fr); column-gap: 12px; }
+  .row { flex-direction: column; gap: 2px; }
+  .row b { font-size: 18px; }
+  .keys { display: none; }
+  .pad { display: grid; }
+}
+@media (hover: none) { .pad { display: grid; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>草叢蛇行</h1>
+    <span class="latin">Morelia viridis · 飼育觀察紀錄</span>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="board" aria-label="貪吃蛇遊戲區"></canvas>
+    <div class="overlay" id="overlay">
+      <h2 id="ov-title">準備放飼</h2>
+      <p id="ov-text">吃掉琥珀甲蟲讓綠樹蟒長大。撞到牆或自己就結束。</p>
+      <button class="go" id="go" type="button">開始</button>
+    </div>
+  </div>
+
+  <aside>
+    <div class="log">
+      <div class="row"><span>甲蟲</span><b id="eaten">0</b></div>
+      <div class="row"><span>體長</span><b><span id="len">12</span><small>cm</small></b></div>
+      <div class="row"><span>最佳紀錄</span><b><span id="best">12</span><small>cm</small></b></div>
+    </div>
+    <p class="keys">
+      <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 或 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移動<br>
+      <kbd>空白</kbd> 暫停／繼續<br>
+      <kbd>M</kbd> 開關音效<br>
+      每節身體 4 cm，吃得越多爬得越快。
+    </p>
+    <button class="mute" id="mute" type="button" aria-pressed="false">🔊 音效：開</button>
+    <div class="pad" id="pad">
+      <button type="button" data-d="up" aria-label="上">▲</button>
+      <button type="button" data-d="left" aria-label="左">◀</button>
+      <button type="button" data-d="down" aria-label="下">▼</button>
+      <button type="button" data-d="right" aria-label="右">▶</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const N = 20, SEG_CM = 4;
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let best = 3;
+  try { best = Math.max(3, +localStorage.getItem('snake-best') || 3); } catch (e) {}
+  $('best').textContent = best * SEG_CM;
+
+  let snake, dir, queue, food, eaten, state = 'ready', acc = 0, last = 0, pulse = 0;
+
+  // ---------- sound (Web Audio, synthesized) ----------
+  let actx = null, muted = false;
+  try { muted = localStorage.getItem('snake-muted') === '1'; } catch (e) {}
+  function audio() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(freq, dur, { type = 'square', vol = 0.08, to = null, delay = 0 } = {}) {
+    if (muted) return;
+    const a = audio(); if (!a) return;
+    const t0 = a.currentTime + delay;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t0 + dur);
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  const sfx = {
+    start: () => { tone(392, .09, { type: 'triangle', vol: .12 }); tone(587, .14, { type: 'triangle', vol: .12, delay: .09 }); },
+    turn: () => tone(220, .03, { type: 'sine', vol: .04 }),
+    eat: () => { const f = 520 + Math.min(eaten, 30) * 12; tone(f, .08, { to: f * 1.6, vol: .07 }); },
+    pause: () => tone(330, .08, { type: 'triangle', vol: .1 }),
+    over: () => { tone(300, .5, { type: 'sawtooth', to: 60, vol: .09 }); tone(150, .5, { type: 'square', to: 40, vol: .05, delay: .05 }); },
+    record: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .16, { type: 'triangle', vol: .11, delay: .45 + i * .11 })),
+  };
+  function setMuted(m) {
+    muted = m;
+    try { localStorage.setItem('snake-muted', m ? '1' : '0'); } catch (e) {}
+    const b = $('mute'); b.setAttribute('aria-pressed', m); b.textContent = m ? '🔇 音效：關' : '🔊 音效：開';
+    if (!m) tone(660, .06, { type: 'triangle', vol: .08 });
+  }
+
+  function reset() {
+    snake = [[6, 10], [5, 10], [4, 10]];
+    dir = 'right'; queue = []; eaten = 0;
+    placeFood(); updateHud();
+  }
+  function placeFood() {
+    const free = [];
+    for (let x = 0; x < N; x++) for (let y = 0; y < N; y++)
+      if (!snake.some(s => s[0] === x && s[1] === y)) free.push([x, y]);
+    food = free[Math.floor(Math.random() * free.length)];
+  }
+  function updateHud() {
+    $('eaten').textContent = eaten;
+    $('len').textContent = snake.length * SEG_CM;
+    $('best').textContent = best * SEG_CM;
+  }
+  const speed = () => Math.max(65, 150 - eaten * 4);
+
+  function turn(d) {
+    if (state === 'ready' || state === 'over') { start(); }
+    if (state !== 'running') return;
+    const prev = queue.length ? queue[queue.length - 1] : dir;
+    const [px, py] = DIRS[prev], [nx, ny] = DIRS[d];
+    if (d === prev || (px + nx === 0 && py + ny === 0)) return;
+    if (queue.length < 3) { queue.push(d); sfx.turn(); }
+  }
+
+  function step() {
+    if (queue.length) dir = queue.shift();
+    const [dx, dy] = DIRS[dir];
+    const head = [snake[0][0] + dx, snake[0][1] + dy];
+    const grows = food && head[0] === food[0] && head[1] === food[1];
+    const body = grows ? snake : snake.slice(0, -1);
+    if (head[0] < 0 || head[1] < 0 || head[0] >= N || head[1] >= N ||
+        body.some(s => s[0] === head[0] && s[1] === head[1])) return gameOver();
+    snake.unshift(head);
+    if (grows) { eaten++; pulse = 1; sfx.eat(); if (snake.length === N * N) return gameOver(true); placeFood(); }
+    else snake.pop();
+    updateHud();
+  }
+
+  function gameOver(won) {
+    state = 'over';
+    const cm = snake.length * SEG_CM;
+    let record = false;
+    if (snake.length > best) { best = snake.length; record = true; try { localStorage.setItem('snake-best', best); } catch (e) {} }
+    updateHud();
+    sfx.over(); if (record || won) sfx.record();
+    showOverlay(won ? '填滿整個飼育箱！' : (record ? '新紀錄！' : '觀察結束'),
+      `吃了 ${eaten} 隻甲蟲，體長 ${cm} cm。`, '再來一次');
+  }
+
+  function showOverlay(t, p, btn) {
+    $('ov-title').textContent = t; $('ov-text').textContent = p; $('go').textContent = btn;
+    $('overlay').hidden = false;
+  }
+  function start() {
+    if (state === 'over' || state === 'ready') reset();
+    state = 'running'; $('overlay').hidden = true; acc = 0;
+    sfx.start();
+  }
+  function togglePause() {
+    if (state === 'running') { state = 'paused'; sfx.pause(); showOverlay('暫停中', `目前體長 ${snake.length * SEG_CM} cm`, '繼續'); }
+    else if (state === 'paused') { state = 'running'; sfx.pause(); $('overlay').hidden = true; }
+    else start();
+  }
+
+  // ---------- drawing ----------
+  let size = 0, cell = 0;
+  function resize() {
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    size = r.width; cell = size / N;
+    canvas.width = Math.round(size * dpr); canvas.height = Math.round(size * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function mix(a, b, t) {
+    const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const A = p(a), B = p(b);
+    return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`;
+  }
+
+  function draw() {
+    const C = { board: css('--board'), grid: css('--grid'), snake: css('--snake'), tail: css('--snake-tail'), beetle: css('--beetle'), ink: css('--ink') };
+    ctx.fillStyle = C.board; ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = C.grid;
+    for (let x = 1; x < N; x++) for (let y = 1; y < N; y++) {
+      ctx.beginPath(); ctx.arc(x * cell, y * cell, Math.max(1, cell * 0.05), 0, 7); ctx.fill();
+    }
+    // beetle
+    if (food) {
+      const cx = (food[0] + .5) * cell, cy = (food[1] + .5) * cell, r = cell * .32;
+      ctx.strokeStyle = C.ink; ctx.lineWidth = Math.max(1, cell * .05); ctx.lineCap = 'round';
+      for (const s of [-1, 1]) for (const k of [-.5, 0, .5]) {
+        ctx.beginPath(); ctx.moveTo(cx + s * r * .6, cy + k * r); ctx.lineTo(cx + s * r * 1.35, cy + k * r * 1.5); ctx.stroke();
+      }
+      ctx.fillStyle = C.beetle;
+      ctx.beginPath(); ctx.ellipse(cx, cy + r * .1, r * .8, r, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = C.ink;
+      ctx.beginPath(); ctx.arc(cx, cy - r * .85, r * .4, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx, cy - r * .5); ctx.lineTo(cx, cy + r * 1.1); ctx.stroke();
+    }
+    // snake: draw tail to head as joined thick strokes
+    const n = snake.length;
+    const pt = s => [(s[0] + .5) * cell, (s[1] + .5) * cell];
+    const grow = reduceMotion ? 0 : pulse;
+    for (let i = n - 1; i >= 0; i--) {
+      const t = n === 1 ? 0 : i / (n - 1);
+      const w = cell * (0.82 - t * 0.3) * (i === 0 ? 1 + grow * .12 : 1);
+      ctx.fillStyle = ctx.strokeStyle = mix(C.snake, C.tail, t);
+      const [x, y] = pt(snake[i]);
+      if (i > 0) {
+        const [x2, y2] = pt(snake[i - 1]);
+        ctx.lineWidth = w; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(x, y, w / 2, 0, 7); ctx.fill();
+    }
+    // saddle markings every 3rd segment
+    ctx.fillStyle = C.board; ctx.globalAlpha = .55;
+    for (let i = 2; i < n; i += 3) {
+      const [x, y] = pt(snake[i]); ctx.beginPath(); ctx.arc(x, y, cell * .1, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // eyes
+    const [hx, hy] = pt(snake[0]), [dx, dy] = DIRS[dir];
+    const ox = -dy * cell * .2, oy = dx * cell * .2, fx = dx * cell * .12, fy = dy * cell * .12;
+    for (const s of [-1, 1]) {
+      ctx.fillStyle = '#f7f3d8';
+      ctx.beginPath(); ctx.arc(hx + fx + ox * s, hy + fy + oy * s, cell * .11, 0, 7); ctx.fill();
+      ctx.fillStyle = '#16200f';
+      ctx.beginPath(); ctx.ellipse(hx + fx * 1.3 + ox * s, hy + fy * 1.3 + oy * s, cell * .03, cell * .07, Math.atan2(dy, dx) + Math.PI / 2, 0, 7); ctx.fill();
+    }
+  }
+
+  function loop(ts) {
+    const dt = Math.min(250, ts - (last || ts)); last = ts;
+    if (state === 'running') {
+      acc += dt;
+      while (acc >= speed() && state === 'running') { acc -= speed(); step(); }
+    }
+    pulse = Math.max(0, pulse - dt / 220);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- input ----------
+  const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right' };
+  addEventListener('keydown', e => {
+    if (KEYS[e.key]) { e.preventDefault(); turn(KEYS[e.key]); }
+    else if (e.key === 'm' || e.key === 'M') setMuted(!muted);
+    else if (e.key === ' ' || e.key === 'Enter' && document.activeElement === document.body) { e.preventDefault(); togglePause(); }
+  });
+  $('go').addEventListener('click', togglePause);
+  $('mute').addEventListener('click', () => setMuted(!muted));
+  setMuted(muted);
+  $('pad').addEventListener('pointerdown', e => {
+    const b = e.target.closest('button'); if (b) { e.preventDefault(); turn(b.dataset.d); }
+  });
+  let touch = null;
+  canvas.addEventListener('pointerdown', e => { touch = [e.clientX, e.clientY]; });
+  canvas.addEventListener('pointerup', e => {
+    if (!touch) return;
+    const dx = e.clientX - touch[0], dy = e.clientY - touch[1]; touch = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+    turn(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  });
+
+  new ResizeObserver(resize).observe(canvas);
+  resize(); reset(); requestAnimationFrame(loop);
+})();
+</script>
